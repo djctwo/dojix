@@ -12,17 +12,12 @@ final class IdleLockTests: XCTestCase {
         func advance(seconds: Int) { now = now.addingTimeInterval(TimeInterval(seconds)) }
     }
 
+    // XCTest makes a new instance per test, so these start fresh without a setUp
+    // (a nonisolated setUp override can't write main-actor state under Swift 6.1)
     private var clock = Clock()
     private var minutes = 15
     private var tracking = true
     private var locks = 0
-
-    override func setUp() {
-        clock = Clock()
-        minutes = 15
-        tracking = true
-        locks = 0
-    }
 
     private func makeTimer() -> IdleLockTimer {
         IdleLockTimer(now: { [unowned self] in clock.now }, minutes: { [unowned self] in minutes },
