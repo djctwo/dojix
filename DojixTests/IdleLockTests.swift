@@ -13,11 +13,19 @@ final class IdleLockTests: XCTestCase {
     }
 
     // XCTest makes a new instance per test, so these start fresh without a setUp
-    // (a nonisolated setUp override can't write main-actor state under Swift 6.1)
+    // (a nonisolated setUp override can't write main-actor state under Swift 6.1);
+    // tests that loop over choices call `reset()` between rounds
     private var clock = Clock()
     private var minutes = 15
     private var tracking = true
     private var locks = 0
+
+    private func reset() {
+        clock = Clock()
+        minutes = 15
+        tracking = true
+        locks = 0
+    }
 
     private func makeTimer() -> IdleLockTimer {
         IdleLockTimer(now: { [unowned self] in clock.now }, minutes: { [unowned self] in minutes },
@@ -65,7 +73,7 @@ final class IdleLockTests: XCTestCase {
 
     func testEveryChoiceLocksAtItsOwnThreshold() {
         for choice in IdleLockSetting.choices where choice > 0 {
-            setUp()
+            reset()
             minutes = choice
             let idle = makeTimer()
             clock.advance(seconds: choice * 60 - 1)
@@ -135,7 +143,7 @@ final class IdleLockTests: XCTestCase {
     /// run loop in its own mode (a default-mode timer would never fire: fail open).
     func testIdleCheckRunsWhileAModalPanelOrMenuIsOpen() {
         for mode in [RunLoop.Mode.modalPanel, .eventTracking] {
-            setUp()
+            reset()
             minutes = 1
             let monitor = AutoLockMonitor(workspaceCenter: NotificationCenter(), distributedCenter: NotificationCenter(),
                                           appCenter: NotificationCenter()) {}

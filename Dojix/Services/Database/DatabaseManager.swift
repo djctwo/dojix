@@ -506,6 +506,9 @@ final class DatabaseManager: @unchecked Sendable {
         var db: OpaquePointer?
         defer { sqlite3_close(db) }
         guard sqlite3_open(":memory:", &db) == SQLITE_OK else { return Data() }
+        // Older SQLite (macOS 15) serializes a never-written database as 0 bytes: write
+        // page 1 first so every version gives a valid one-page image
+        sqlite3_exec(db, "CREATE TABLE empty_image(x); DROP TABLE empty_image; VACUUM;", nil, nil, nil)
         var size: sqlite3_int64 = 0
         guard let bytes = sqlite3_serialize(db, "main", &size, 0) else { return Data() }
         defer { sqlite3_free(bytes) }
