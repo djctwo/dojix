@@ -1,0 +1,98 @@
+name: Dojix
+options:
+  bundleIdPrefix: com.dojix
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.3"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    # Unsigned/ad-hoc by default so anyone can build without an Apple developer account.
+    # To sign with your own team: set DEVELOPMENT_TEAM and CODE_SIGN_IDENTITY="Apple Development".
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+  configs:
+    # Debug builds use their own bundle ID, so they never open (or, on a schema change,
+    # erase) the journal of an installed Release copy. Release keeps the official ID.
+    Debug:
+      DOJIX_BUNDLE_ID: com.dojix.app.dev
+    Release:
+      DOJIX_BUNDLE_ID: com.dojix.app
+      # No get-task-allow in shipped builds: other processes (debuggers) can't attach and
+      # read the decrypted journal from memory. Debug builds keep it for development.
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    # Pinned to the commit of tag v7.11.1 (the version the test suite was run against),
+    # not the tag: a moved tag can't swap in different code. No Package.resolved is
+    # committed (the project is generated), so this pin is what CI resolves.
+    revision: b83108d10f42680d78f23fe4d4d80fc88dab3212
+
+targets:
+  Dojix:
+    type: application
+    platform: macOS
+    sources:
+      - path: Dojix
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        # Override DOJIX_BUNDLE_ID for development builds so they never share data
+        # (database folder, Keychain items, preferences) with an installed copy.
+        PRODUCT_BUNDLE_IDENTIFIER: $(DOJIX_BUNDLE_ID)
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_CFBundleDisplayName: Dojix
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.finance"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright © 2026 Douglas Cleary. Licensed under the GNU GPL v3."
+        CODE_SIGN_ENTITLEMENTS: Dojix/Dojix.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+        DEAD_CODE_STRIPPING: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_ATSApplicationFontsPath: Fonts
+    dependencies:
+      - package: GRDB
+  DojixTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: DojixTests
+        excludes:
+          - "**/.DS_Store"
+    dependencies:
+      - target: Dojix
+      - package: GRDB
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dojix.oss.DojixTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Dojix.app/Contents/MacOS/Dojix"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  DojixUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: DojixUITests
+        excludes:
+          - "**/.DS_Store"
+    dependencies:
+      - target: Dojix
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dojix.oss.DojixUITests
+        # XCUIApplication is main-actor isolated in the macOS 15 SDK; UI tests run on the
+        # main thread anyway, so this target uses Swift 5 mode with minimal checking.
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Dojix

@@ -1,0 +1,179 @@
+name: macOS build and tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      # Throwaway bundle ID and data folder: CI never touches a real Dojix install
+      DOJIX_BUNDLE_ID: com.dojix.app.ci
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Select Xcode
+        # Pinned so CI doesn't change when the runner image's default Xcode does
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app && xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Unit tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/dojix-data" "$RUNNER_TEMP/dojix-mt5"
+          TEST_RUNNER_DOJIX_DATA_DIR="$RUNNER_TEMP/dojix-data" \
+          TEST_RUNNER_DOJIX_MT5_DIR="$RUNNER_TEMP/dojix-mt5" \
+          xcodebuild test \
+            -project Dojix.xcodeproj -scheme Dojix \
+            -only-testing:DojixTests \
+            -derivedDataPath "$RUNNER_TEMP/dd-test" \
+            DOJIX_BUNDLE_ID="$DOJIX_BUNDLE_ID" \
+            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+
+      - name: Build unsigned Release app
+        run: |
+          xcodebuild build \
+            -project Dojix.xcodeproj -scheme Dojix -configuration Release \
+            -derivedDataPath "$RUNNER_TEMP/dd-release" \
+            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+          ditto -c -k --keepParent \
+            "$RUNNER_TEMP/dd-release/Build/Products/Release/Dojix.app" \
+            "$RUNNER_TEMP/Dojix-unsigned.zip"
+
+      - name: Upload app
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: Dojix-unsigned
+          path: ${{ runner.temp }}/Dojix-unsigned.zip
+          if-no-files-found: error
+
+  # Launch + UI tests + screenshots run here, never on a developer's Mac with a real
+  # Dojix install. UI automation on hosted runners can be flaky, so this job doesn't
+  # block the build job; check its results and screenshots.
+  ui-tests:
+    runs-on: macos-15
+    timeout-minutes: 60
+    continue-on-error: true
+    env:
+      DOJIX_BUNDLE_ID: com.dojix.app.ci
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Select Xcode
+        # Pinned so CI doesn't change when the runner image's default Xcode does
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app && xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: UI tests (sample data walk-through + screenshots)
+        run: |
+          mkdir -p "$RUNNER_TEMP/uitest-data"
+          TEST_RUNNER_DOJIX_UITEST_ROOT="$RUNNER_TEMP/uitest-data" \
+          xcodebuild test \
+            -project Dojix.xcodeproj -scheme Dojix \
+            -only-testing:DojixUITests \
+            -derivedDataPath "$RUNNER_TEMP/dd-ui" \
+            -resultBundlePath "$RUNNER_TEMP/ui.xcresult" \
+            DOJIX_BUNDLE_ID="$DOJIX_BUNDLE_ID" \
+            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+
+      - name: Export screenshots
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/screenshots"
+          xcrun xcresulttool export attachments \
+            --path "$RUNNER_TEMP/ui.xcresult" \
+            --output-path "$RUNNER_TEMP/screenshots" || true
+
+      - name: Upload UI results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: Dojix-ui-tests
+          path: |
+            ${{ runner.temp }}/screenshots
+            ${{ runner.temp }}/ui.xcresult
+          if-no-files-found: warn
+
+  # Pushing a version tag (for example v1.0.0) builds the unsigned Release app and publishes
+  # it as a GitHub Release, after the unit tests passed. Release notes: an existing release
+  # for the tag (e.g. drafted by hand) keeps its notes and only gets the files attached;
+  # otherwise docs/release-notes/<tag>.md is used if it exists, else GitHub's generated notes.
+  # This is the only job that can write to the repository (to create the release).
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-test
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        # Pinned so CI doesn't change when the runner image's default Xcode does
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app && xcodebuild -version
+
+      - name: Check the tag matches the app version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          app_version=$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"$/\1/p' project.yml)
+          if [ "${TAG#v}" != "$app_version" ]; then
+            echo "::error::Tag $TAG does not match MARKETING_VERSION $app_version in project.yml"
+            exit 1
+          fi
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned Release app
+        run: |
+          xcodebuild build \
+            -project Dojix.xcodeproj -scheme Dojix -configuration Release \
+            -derivedDataPath "$RUNNER_TEMP/dd-release" \
+            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+
+      - name: Zip the app
+        run: |
+          cd "$RUNNER_TEMP"
+          ditto -c -k --sequesterRsrc --keepParent \
+            dd-release/Build/Products/Release/Dojix.app Dojix-macOS-unsigned.zip
+          shasum -a 256 Dojix-macOS-unsigned.zip > Dojix-macOS-unsigned.zip.sha256
+          cat Dojix-macOS-unsigned.zip.sha256
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          zip="$RUNNER_TEMP/Dojix-macOS-unsigned.zip"
+          notes="docs/release-notes/$TAG.md"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$zip" "$zip.sha256" --repo "$GITHUB_REPOSITORY" --clobber
+          elif [ -f "$notes" ]; then
+            gh release create "$TAG" "$zip" "$zip.sha256" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --title "Dojix ${TAG#v}" --notes-file "$notes"
+          else
+            gh release create "$TAG" "$zip" "$zip.sha256" --repo "$GITHUB_REPOSITORY" \
+              --verify-tag --title "Dojix ${TAG#v}" --generate-notes
+          fi

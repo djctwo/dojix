@@ -1,0 +1,57 @@
+# Xcode / build output
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcresult/
+.swiftpm/
+.build/
+
+# Generated project (run `xcodegen generate`)
+Dojix.xcodeproj/
+
+# Release artifacts
+*.app
+*.dmg
+*.zip
+*.dSYM
+*.dSYM.zip
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Secrets & credentials (never commit these)
+*.env
+.env*
+*.key
+*.pem
+*.p12
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.p8
+*.pfx
+*.keystore
+*.certSigningRequest
+Secrets/
+credentials/
+
+# Real journals and backups (never commit real trade data)
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.dojix
+
+# Local security scan reports
+CLAUDE-SECURITY-*/
+
+# Editors
+*.swp
+*~
+.vscode/
+.idea/
+
+# Coverage output
+*.profraw

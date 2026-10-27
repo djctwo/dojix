@@ -1,0 +1,33 @@
+Dojix
+Copyright (C) 2026 Douglas Cleary
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License (LICENSE) for more
+details.
+
+Keep this NOTICE and the copyright line above in any copy or derivative work.
+
+Not financial advice
+--------------------
+Dojix is a journaling and statistics tool. Nothing it shows, including optional
+AI-generated recommendations, is financial advice. Trading involves risk.
+
+Third-party components
+----------------------
+- GRDB.swift (MIT License) - SQLite toolkit, fetched by Swift Package Manager.
+- DM Sans and JetBrains Mono fonts (SIL Open Font License 1.1) - license texts
+  are bundled in Dojix/Resources/Fonts/.
+- Sidebar icons derived from Lucide (ISC License, Copyright (c) Lucide
+  Contributors / Cole Bemis), in Dojix/Resources/Assets.xcassets/Icons/.
+
+Trademarks
+----------
+MetaTrader, OANDA, Twelve Data, Polygon.io, Anthropic/Claude, cTrader,
+TradingView, Interactive Brokers, thinkorswim and NinjaTrader are trademarks of
+their respective owners. Dojix is not affiliated with or endorsed by any of them.

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Dojix — app icon (D in edge-lock)</title>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0.55" y2="1"><stop offset="0" stop-color="#23282F"></stop><stop offset="1" stop-color="#0C0E11"></stop></linearGradient></defs>
+  <rect width="1024" height="1024" rx="229" fill="url(#g)"></rect>
+  <g transform="scale(10.24)" fill="none" stroke-linejoin="round">
+    <g stroke="#FFFFFF" stroke-width="5" stroke-linecap="round">
+      <path d="M16 30 L16 16 L30 16"></path>
+      <path d="M70 16 L84 16 L84 30"></path>
+      <path d="M16 70 L16 84 L30 84"></path>
+      <path d="M70 84 L84 84 L84 70"></path>
+    </g>
+    <g stroke="#E8B44C" stroke-width="9">
+      <path d="M38 32 L38 68"></path>
+      <path d="M38 32 C70 32 70 68 38 68"></path>
+    </g>
+  </g>
+</svg>
