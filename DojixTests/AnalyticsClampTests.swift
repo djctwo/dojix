@@ -21,6 +21,7 @@ final class AnalyticsClampTests: XCTestCase {
 
     /// Lots that alternate 1e-15 after wins and 1e6 after losses (a crafted file that
     /// bypassed the import minimum, e.g. an old database) must not crash the Risk view.
+    @MainActor // the analytics views are SwiftUI views (main actor)
     func testBehavioralScoreWithExtremeLotRatio() {
         var trades: [Trade] = []
         for i in 0..<30 {
@@ -41,6 +42,7 @@ final class AnalyticsClampTests: XCTestCase {
     }
 
     /// P&L beyond Int's range must not crash the P&L distribution chart.
+    @MainActor // the analytics views are SwiftUI views (main actor)
     func testWinLossBucketsWithHugeProfit() {
         let trades = [
             SecFixture.trade(ticket: 1, netProfit: Decimal(string: "-1e21") ?? 0),
