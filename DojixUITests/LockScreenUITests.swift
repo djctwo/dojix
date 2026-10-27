@@ -117,8 +117,11 @@ final class LockScreenUITests: XCTestCase {
             app.staticTexts["Erase All Local Data?"].waitForExistence(timeout: 5),
             "Forgot password should offer erase-and-start-fresh, not silently remove the lock"
         )
-        // Each open window shows the lock screen and its alert; either button erases
-        app.buttons["Erase Everything"].firstMatch.click()
+        // The alert's button, not its Touch Bar copy (which can't be clicked)
+        let erase = [app.sheets, app.dialogs, app.windows]
+            .map { $0.buttons["Erase Everything"].firstMatch }
+            .first { $0.exists && $0.isHittable } ?? app.windows.buttons["Erase Everything"].firstMatch
+        erase.click()
 
         XCTAssertTrue(lockTitle.waitForNonExistence(timeout: 15), "after erasing, Dojix opens empty")
         app.typeKey(",", modifierFlags: .command)
